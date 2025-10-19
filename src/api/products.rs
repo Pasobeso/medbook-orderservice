@@ -5,6 +5,8 @@ use medbook_core::app_error::AppError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+use crate::api::ApiUrls;
+
 #[derive(Serialize, Deserialize)]
 struct Product {
     pub id: i32,
@@ -12,6 +14,7 @@ struct Product {
 }
 
 pub async fn get_product_unit_prices(client: Client, ids: Vec<i32>) -> Result<HashMap<i32, f32>> {
+    let url = ApiUrls::get_inventory_service_url();
     let ids_query = ids
         .into_iter()
         .map(|id| id.to_string())
@@ -19,7 +22,7 @@ pub async fn get_product_unit_prices(client: Client, ids: Vec<i32>) -> Result<Ha
         .join(",");
 
     let products: Vec<Product> = client
-        .get("http://localhost:3000/products")
+        .get(format!("{}/products", url))
         .query(&[("ids", ids_query)])
         .send()
         .await

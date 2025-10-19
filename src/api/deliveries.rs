@@ -4,14 +4,17 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::api::ApiUrls;
+
 #[derive(Serialize, Deserialize)]
 struct DeliveryAddress {
     patient_id: i32,
 }
 
 pub async fn get_delivery_address_as_value(client: Client, id: i32) -> Result<Value> {
+    let url = ApiUrls::get_delivery_service_url();
     let delivery_address: StdResponse<Value, String> = client
-        .get(format!("http://localhost:3003/delivery-addresses/{}", id))
+        .get(format!("{}/delivery-addresses/{}", url, id))
         .send()
         .await
         .map_err(|_| AppError::ServiceUnreachable("DeliveryService".into()))?
@@ -30,8 +33,9 @@ pub async fn get_delivery_address_as_value_with_ownership_check(
     id: i32,
     patient_id: i32,
 ) -> Result<Value> {
+    let url = ApiUrls::get_delivery_service_url();
     let delivery_address: StdResponse<Value, String> = client
-        .get(format!("http://localhost:3003/delivery-addresses/{}", id))
+        .get(format!("{}/delivery-addresses/{}", url, id))
         .send()
         .await
         .map_err(|_| AppError::ServiceUnreachable("DeliveryService".into()))?
