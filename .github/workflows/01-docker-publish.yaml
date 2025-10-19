@@ -6,6 +6,7 @@ on:
     tags: ["v*.*.*"] # push a semver tag to cut a release image
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
