@@ -1,0 +1,30 @@
+[package]
+name = "medbook-orderservice"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# --- Core infrastructure ---
+anyhow = "1.0.100"
+axum = { version = "0.8.4", features = ["macros"] }
+diesel = { version = "2.2.12", features = ["chrono", "serde_json", "uuid"] }
+diesel-async = { version = "0.6.1", features = ["postgres", "tokio", "pool", "bb8"] }
+dotenvy = "0.15.7"
+tokio = { version = "1.47.1", features = ["full"] }
+serde = { version = "1.0.227", features = ["derive"] }
+serde_json = "1.0.145"
+thiserror = "2.0.16"
+tower = "0.5.2"
+tower-http = { version = "0.6.6", features = ["trace"] }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.20"
+uuid = { version = "1.18.1", features = ["serde"] }
+chrono = { version = "0.4.42", features = ["serde"] }
+lapin = "3.7.0"
+rmq-wrappers = { git = "https://github.com/Pasobeso/rmq-wrappers.git" }
+futures = "0.3.31"
+futures-lite = "2.6.1"
+reqwest = "0.12.23"
+# --- Domain (internal crates) ---
+medbook-core = { path = "../medbook-core" }
+medbook-events = { path = "../medbook-events" }
