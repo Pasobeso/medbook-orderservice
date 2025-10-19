@@ -1628,7 +1628,7 @@ dependencies = [
 [[package]]
 name = "medbook-core"
 version = "0.1.0"
-source = "git+https://github.com/Pasobeso/medbook-core.git#dae09453c14dde469fad7ed7a430ea6641e1f9bd"
+source = "git+https://github.com/Pasobeso/medbook-core.git#7b09d1e18459185b33cc5c293c69cce1f90894e5"
 dependencies = [
  "anyhow",
  "axum",
