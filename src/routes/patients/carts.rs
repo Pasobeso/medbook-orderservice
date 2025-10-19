@@ -11,7 +11,7 @@ use diesel::{ExpressionMethods, QueryDsl, QueryResult, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use medbook_core::{
     aliases::DieselError,
-    app_error::AppError,
+    app_error::{AppError, StdResponse},
     app_state::AppState,
     middleware::{self},
 };
@@ -56,7 +56,10 @@ async fn get_carts(State(state): State<AppState>) -> Result<impl IntoResponse, A
         .await
         .context("Failed to get carts")?;
 
-    Ok(Json(orders))
+    Ok(StdResponse {
+        data: Some(orders),
+        message: Some("Get orders successfully"),
+    })
 }
 
 /// Fetch a specific cart belonging to the authenticated patient.
@@ -111,11 +114,14 @@ async fn get_cart(
         })
         .sum();
 
-    Ok(Json(GetCartRes {
-        cart,
-        cart_items,
-        total_price,
-    }))
+    Ok(StdResponse {
+        data: Some(GetCartRes {
+            cart,
+            cart_items,
+            total_price,
+        }),
+        message: Some("Get cart successfully"),
+    })
 }
 
 /// Fetch all carts belonging to the authenticated patient.
@@ -170,7 +176,10 @@ async fn get_my_carts(
         })
         .collect();
 
-    Ok(Json(carts_with_items))
+    Ok(StdResponse {
+        data: Some(carts_with_items),
+        message: Some("Get my carts successfully"),
+    })
 }
 
 /// Hard-delete an order by setting `deleted_at` to the current timestamp.
@@ -193,7 +202,10 @@ async fn delete_cart(
         .await;
 
     match cart {
-        Ok(cart) => Ok(Json(cart)),
+        Ok(cart) => Ok(StdResponse {
+            data: Some(cart),
+            message: Some("Deleted cart successfully"),
+        }),
         Err(err) => match err {
             DieselError::NotFound => Err(AppError::NotFound),
             _ => Err(AppError::Other(err.into())),
@@ -265,7 +277,10 @@ async fn create_cart(
         .await
         .context("Transaction failed")?;
 
-    Ok(Json(CreateCartRes { cart, cart_items }))
+    Ok(StdResponse {
+        data: Some(CreateCartRes { cart, cart_items }),
+        message: Some("Created cart successfully"),
+    })
 }
 
 /// Update a cart
@@ -355,11 +370,14 @@ async fn update_cart(
         .await;
 
     match result {
-        Ok((deleted_items, updated_items, updated_cart)) => Ok(Json(UpdateCartRes {
-            deleted_items,
-            updated_items,
-            updated_cart,
-        })),
+        Ok((deleted_items, updated_items, updated_cart)) => Ok(StdResponse {
+            data: Some(UpdateCartRes {
+                deleted_items,
+                updated_items,
+                updated_cart,
+            }),
+            message: Some("Updated cart successfully"),
+        }),
         Err(err) => Err(err.into()),
     }
 }
