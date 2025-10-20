@@ -5,11 +5,12 @@ use diesel::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 // Carts
 
-#[derive(Queryable, Selectable, Identifiable, Serialize, Debug)]
+#[derive(Queryable, Selectable, Identifiable, Serialize, Debug, ToSchema)]
 #[diesel(table_name = crate::schema::carts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CartEntity {
@@ -19,7 +20,7 @@ pub struct CartEntity {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Queryable, Selectable, Serialize, Debug)]
+#[derive(Queryable, Selectable, Serialize, Debug, ToSchema)]
 #[diesel(belongs_to(CartEntity, foreign_key = cart_id))]
 #[diesel(table_name = crate::schema::cart_items)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -47,7 +48,7 @@ pub struct CreateCartItemEntity {
 
 // Orders
 
-#[derive(Queryable, Serialize, Selectable, Debug)]
+#[derive(Queryable, Serialize, Selectable, Debug, ToSchema)]
 #[diesel(table_name = crate::schema::orders)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct OrderEntity {
@@ -73,7 +74,7 @@ pub struct CreateOrderEntity {
     pub status: String,
 }
 
-#[derive(Queryable, Serialize, Selectable, Debug, Clone)]
+#[derive(Queryable, Serialize, Selectable, Debug, Clone, ToSchema)]
 #[diesel(table_name = crate::schema::payments)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct PaymentEntity {

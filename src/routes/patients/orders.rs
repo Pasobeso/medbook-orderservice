@@ -17,6 +17,8 @@ use medbook_core::{
 };
 use medbook_events::OrderCancelledEvent;
 use std::collections::HashMap;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
 
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +36,7 @@ use crate::{
 };
 
 /// Defines all patient-facing order routes (CRUD operations + authorization).
+#[deprecated]
 pub fn routes() -> Router<AppState> {
     Router::new().nest(
         "/patients/orders",
@@ -50,7 +53,33 @@ pub fn routes() -> Router<AppState> {
     )
 }
 
-/// Fetch all active (non-deleted) orders in the system.
+/// Defines routes with OpenAPI specs. Should be used over `routes()` where possible.
+pub fn routes_with_openapi() -> OpenApiRouter<AppState> {
+    utoipa_axum::router::OpenApiRouter::new().nest(
+        "/patients/orders",
+        OpenApiRouter::new()
+            .routes(utoipa_axum::routes!(get_orders))
+            .routes(utoipa_axum::routes!(get_order))
+            .routes(utoipa_axum::routes!(get_my_orders))
+            .routes(utoipa_axum::routes!(create_order))
+            .routes(utoipa_axum::routes!(cancel_order))
+            .routes(utoipa_axum::routes!(create_payment_for_order))
+            .route_layer(axum::middleware::from_fn(
+                middleware::patients_authorization,
+            )),
+    )
+}
+
+/// Fetch all orders in the system.
+#[utoipa::path(
+    get,
+    path = "/",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "List all orders", body = StdResponse<Vec<OrderEntity>, String>)
+    )
+)]
 async fn get_orders(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = &mut state
         .db_pool
@@ -70,14 +99,26 @@ async fn get_orders(State(state): State<AppState>) -> Result<impl IntoResponse, 
     })
 }
 
-/// Fetch a specific order belonging to the authenticated patient.
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct GetOrderRes {
     pub order: OrderEntity,
     pub order_items: Vec<CartItemEntity>,
     pub total_price: f32,
 }
 
+/// Fetch a specific order belonging to the authenticated patient.
+#[utoipa::path(
+    get,
+    path = "/{id}",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Order ID to fetch")
+    ),
+    responses(
+        (status = 200, description = "Get order successfully", body = StdResponse<GetOrderRes, String>)
+    )
+)]
 async fn get_order(
     Path(id): Path<i32>,
     State(state): State<AppState>,
@@ -128,6 +169,15 @@ async fn get_order(
 }
 
 /// Fetch all orders belonging to the authenticated patient.
+#[utoipa::path(
+    get,
+    path = "/my-orders",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "List my orders", body = StdResponse<Vec<GetOrderRes>, String>)
+    )
+)]
 async fn get_my_orders(
     State(state): State<AppState>,
     Extension(patient_id): Extension<i32>,
@@ -183,13 +233,23 @@ async fn get_my_orders(
     })
 }
 
-/// Create a new order for the patient and publish an outbox event for inventory reservation.
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct CreateOrderReq {
     delivery_address_id: i32,
     cart_id: i32,
 }
 
+/// Create a new order for the authenticated patient.
+#[utoipa::path(
+    post,
+    path = "/",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    request_body = CreateOrderReq,
+    responses(
+        (status = 200, description = "Created order successfully", body = StdResponse<OrderEntity, String>)
+    )
+)]
 async fn create_order(
     State(state): State<AppState>,
     Extension(patient_id): Extension<i32>,
@@ -262,6 +322,19 @@ async fn create_order(
     })
 }
 
+/// Cancel a reserved order for the authenticated patient.
+#[utoipa::path(
+    delete,
+    path = "/{id}",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Order ID to cancel")
+    ),
+    responses(
+        (status = 200, description = "Cancelled order successfully", body = StdResponse<OrderEntity, String>)
+    )
+)]
 async fn cancel_order(
     Path(id): Path<i32>,
     State(state): State<AppState>,
@@ -324,18 +397,32 @@ async fn cancel_order(
     })
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreatePaymentForOrderReq {
     pub provider: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct CreatePaymentForOrderRes {
     pub payment: PaymentEntity,
     pub updated_order: OrderEntity,
 }
 
-pub async fn create_payment_for_order(
+/// Create a new payment for an existing order.
+#[utoipa::path(
+    post,
+    path = "/{id}/payment",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Order ID to create payment for")
+    ),
+    request_body = CreatePaymentForOrderReq,
+    responses(
+        (status = 200, description = "Created payment successfully", body = StdResponse<CreatePaymentForOrderRes, String>)
+    )
+)]
+async fn create_payment_for_order(
     Path(id): Path<i32>,
     State(state): State<AppState>,
     Extension(patient_id): Extension<i32>,

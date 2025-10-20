@@ -16,6 +16,8 @@ use medbook_core::{
     middleware::{self},
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
 
 use crate::{
     api::products::get_product_unit_prices,
@@ -26,7 +28,8 @@ use crate::{
     },
 };
 
-/// Defines all patient-facing order routes (CRUD operations + authorization).
+/// Defines all patient-facing carts routes (CRUD operations + authorization).
+#[deprecated]
 pub fn routes() -> Router<AppState> {
     Router::new().nest(
         "/patients/carts",
@@ -43,7 +46,33 @@ pub fn routes() -> Router<AppState> {
     )
 }
 
-/// Fetch all active (non-deleted) carts in the system.
+/// Defines routes with OpenAPI specs. Should be used over `routes()` where possible.
+pub fn routes_with_openapi() -> OpenApiRouter<AppState> {
+    utoipa_axum::router::OpenApiRouter::new().nest(
+        "/patients/carts",
+        OpenApiRouter::new()
+            .routes(utoipa_axum::routes!(get_carts))
+            .routes(utoipa_axum::routes!(get_cart))
+            .routes(utoipa_axum::routes!(get_my_carts))
+            .routes(utoipa_axum::routes!(delete_cart))
+            .routes(utoipa_axum::routes!(create_cart))
+            .routes(utoipa_axum::routes!(update_cart))
+            .route_layer(axum::middleware::from_fn(
+                middleware::patients_authorization,
+            )),
+    )
+}
+
+/// Get all carts in the system (admin or debugging use).
+#[utoipa::path(
+    get,
+    path = "/",
+    tags = ["Carts"],
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "List all carts", body = StdResponse<Vec<CartEntity>, String>)
+    )
+)]
 async fn get_carts(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let conn = &mut state
         .db_pool
@@ -51,26 +80,37 @@ async fn get_carts(State(state): State<AppState>) -> Result<impl IntoResponse, A
         .await
         .context("Failed to obtain a DB connection pool")?;
 
-    let orders: Vec<CartEntity> = carts::table
+    let carts: Vec<CartEntity> = carts::table
         .get_results(conn)
         .await
         .context("Failed to get carts")?;
 
     Ok(StdResponse {
-        data: Some(orders),
-        message: Some("Get orders successfully"),
+        data: Some(carts),
+        message: Some("Get carts successfully"),
     })
 }
 
-/// Fetch a specific cart belonging to the authenticated patient.
-
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct GetCartRes {
     pub cart: CartEntity,
     pub cart_items: Vec<CartItemEntity>,
     pub total_price: f32,
 }
 
+/// Get a specific cart belonging to the authenticated patient.
+#[utoipa::path(
+    get,
+    path = "/{id}",
+    tags = ["Carts"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Cart ID to fetch")
+    ),
+    responses(
+        (status = 200, description = "Get cart successfully", body = StdResponse<GetCartRes, String>)
+    )
+)]
 async fn get_cart(
     Path(id): Path<i32>,
     State(state): State<AppState>,
@@ -124,7 +164,16 @@ async fn get_cart(
     })
 }
 
-/// Fetch all carts belonging to the authenticated patient.
+/// Get all carts belonging to the current authenticated patient.
+#[utoipa::path(
+    get,
+    path = "/my-carts",
+    tags = ["Carts"],
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "List my carts", body = StdResponse<Vec<GetCartRes>, String>)
+    )
+)]
 async fn get_my_carts(
     State(state): State<AppState>,
     Extension(patient_id): Extension<i32>,
@@ -182,7 +231,19 @@ async fn get_my_carts(
     })
 }
 
-/// Hard-delete an order by setting `deleted_at` to the current timestamp.
+/// Delete a cart belonging to the authenticated patient.
+#[utoipa::path(
+    delete,
+    path = "/{id}",
+    tags = ["Carts"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Cart ID to delete")
+    ),
+    responses(
+        (status = 200, description = "Deleted cart successfully", body = StdResponse<CartEntity, String>)
+    )
+)]
 async fn delete_cart(
     Path(id): Path<i32>,
     State(state): State<AppState>,
@@ -215,23 +276,34 @@ async fn delete_cart(
 
 /// Create a new cart for the patient.
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct CreateCartReq {
     pub cart_items: Vec<CreateCartReqCartItem>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct CreateCartReqCartItem {
     pub product_id: i32,
     pub quantity: i32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct CreateCartRes {
     pub cart: CartEntity,
     pub cart_items: Vec<CartItemEntity>,
 }
 
+/// Create a new cart for the authenticated patient.
+#[utoipa::path(
+    post,
+    path = "/",
+    tags = ["Carts"],
+    security(("bearerAuth" = [])),
+    request_body = CreateCartReq,
+    responses(
+        (status = 200, description = "Created cart successfully", body = StdResponse<CreateCartRes, String>)
+    )
+)]
 async fn create_cart(
     State(state): State<AppState>,
     Extension(patient_id): Extension<i32>,
@@ -285,13 +357,27 @@ async fn create_cart(
 
 /// Update a cart
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct UpdateCartRes {
     pub deleted_items: Vec<CartItemEntity>,
     pub updated_items: Vec<CartItemEntity>,
     pub updated_cart: CartEntity,
 }
 
+/// Update a specific cart’s contents for the authenticated patient.
+#[utoipa::path(
+    patch,
+    path = "/{id}",
+    tags = ["Carts"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Cart ID to update")
+    ),
+    request_body = CreateCartReq,
+    responses(
+        (status = 200, description = "Updated cart successfully", body = StdResponse<UpdateCartRes, String>)
+    )
+)]
 async fn update_cart(
     Path(id): Path<i32>,
     State(state): State<AppState>,

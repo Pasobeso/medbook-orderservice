@@ -14,6 +14,8 @@ use medbook_core::{
 };
 use medbook_events::DeliveryOrderRequestEvent;
 use serde::Serialize;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
 use uuid::Uuid;
 
 use crate::{
@@ -24,6 +26,8 @@ use crate::{
     },
 };
 
+/// Defines all patient-facing order routes (CRUD operations + authorization).
+#[deprecated]
 pub fn routes() -> Router<AppState> {
     Router::new().nest(
         "/payments",
@@ -31,12 +35,32 @@ pub fn routes() -> Router<AppState> {
     )
 }
 
-#[derive(Serialize)]
+/// Defines routes with OpenAPI specs. Should be used over `routes()` where possible.
+pub fn routes_with_openapi() -> OpenApiRouter<AppState> {
+    utoipa_axum::router::OpenApiRouter::new().nest(
+        "/payments",
+        OpenApiRouter::new().routes(utoipa_axum::routes!(mock_pay)),
+    )
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct MockPayRes {
     updated_payment: PaymentEntity,
     updated_order: OrderEntity,
 }
 
+/// Mock payment operation for demonstration purposes.
+#[utoipa::path(
+    post,
+    path = "/{id}/mock-pay",
+    tags = ["Payments"],
+    params(
+        ("id" = Uuid, Path, description = "Payment ID to mark as paid")
+    ),
+    responses(
+        (status = 200, description = "Payment successfully marked as paid", body = StdResponse<MockPayRes, String>)
+    )
+)]
 pub async fn mock_pay(
     Path(id): Path<Uuid>,
     State(state): State<AppState>,
