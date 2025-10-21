@@ -17,7 +17,8 @@ async fn main() -> Result<()> {
 
     let routes = routes::payments::routes_with_openapi()
         .merge(routes::patients::carts::routes_with_openapi())
-        .merge(routes::patients::orders::routes_with_openapi());
+        .merge(routes::patients::orders::routes_with_openapi())
+        .merge(routes::orders::routes_with_openapi());
 
     let mut openapi = routes.get_openapi().clone();
     openapi.info = utoipa::openapi::InfoBuilder::new()
