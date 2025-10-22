@@ -41,6 +41,7 @@ CREATE TABLE "orders" (
   FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE
 );
 
+
 CREATE TRIGGER update_orders_timestamp
 BEFORE UPDATE ON orders
 FOR EACH ROW
