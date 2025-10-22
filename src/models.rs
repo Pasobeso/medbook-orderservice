@@ -58,7 +58,7 @@ pub struct OrderEntity {
     pub status: String,
     pub order_type: String,
     pub delivery_id: Option<Uuid>,
-    pub delivery_address: Value,
+    pub delivery_address: Option<Value>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,

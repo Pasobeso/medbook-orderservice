@@ -1731,7 +1731,7 @@ dependencies = [
 [[package]]
 name = "medbook-events"
 version = "0.1.0"
-source = "git+https://github.com/Pasobeso/medbook-events.git#088517b725bcf55a4546023d77aa97a3408615bc"
+source = "git+https://github.com/Pasobeso/medbook-events.git#9c3894d7f571de91e0653fbd611ce682b4ce2f7c"
 dependencies = [
  "serde",
  "serde_json",
@@ -2542,9 +2542,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.33"
+version = "0.23.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "751e04a496ca00bb97a5e043158d23d66b5aabf2e1d5aa2a0aaebb1aafe6f82c"
+checksum = "6a9586e9ee2b4f8fab52a0048ca7334d7024eef48e2cb9407e3497bb7cab7fa7"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
@@ -3347,9 +3347,9 @@ checksum = "5c1cb5db39152898a79168971543b1cb5020dff7fe43c8dc468b0885f5e29df5"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.19"
+version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f63a545481291138910575129486daeaf8ac54aee4387fe7906919f7830c7d9d"
+checksum = "462eeb75aeb73aea900253ce739c8e18a67423fadf006037cd3ff27e82748a06"
 
 [[package]]
 name = "unicode-normalization"

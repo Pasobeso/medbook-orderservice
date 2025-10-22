@@ -27,7 +27,7 @@ diesel::table! {
         status -> Text,
         order_type -> Text,
         delivery_id -> Nullable<Uuid>,
-        delivery_address -> Jsonb,
+        delivery_address -> Nullable<Jsonb>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
         deleted_at -> Nullable<Timestamptz>,
