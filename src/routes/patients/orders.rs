@@ -65,6 +65,7 @@ pub fn routes_with_openapi() -> OpenApiRouter<AppState> {
             .routes(utoipa_axum::routes!(create_order))
             .routes(utoipa_axum::routes!(cancel_order))
             .routes(utoipa_axum::routes!(create_payment_for_order))
+            .routes(utoipa_axum::routes!(get_order_payments))
             .route_layer(axum::middleware::from_fn(
                 middleware::patients_authorization,
             )),
@@ -518,5 +519,50 @@ async fn create_payment_for_order(
             updated_order,
         }),
         message: Some("Created payment successfully"),
+    })
+}
+
+/// Get payments of an order.
+#[utoipa::path(
+    get,
+    path = "/{id}/payment",
+    tags = ["Orders"],
+    security(("bearerAuth" = [])),
+    params(
+        ("id" = i32, Path, description = "Order ID to get payments from")
+    ),
+    request_body = CreatePaymentForOrderReq,
+    responses(
+        (status = 200, description = "Get payments successfully", body = StdResponse<Vec<PaymentEntity>, String>)
+    )
+)]
+async fn get_order_payments(
+    Path(id): Path<i32>,
+    State(state): State<AppState>,
+    Extension(patient_id): Extension<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let conn = &mut state
+        .db_pool
+        .get()
+        .await
+        .context("Failed to obtain a DB connection pool")?;
+
+    let _: OrderEntity = orders::table
+        .find(id)
+        .filter(orders::patient_id.eq(patient_id))
+        .get_result(conn)
+        .await
+        .map_err(|_| AppError::NotFound)?;
+
+    let payments: Vec<PaymentEntity> = payments::table
+        .filter(payments::order_id.eq(id))
+        .order_by(payments::updated_at.desc())
+        .get_results(conn)
+        .await
+        .context("Failed to get order payments")?;
+
+    Ok(StdResponse {
+        data: Some(payments),
+        message: Some("Get payments successfully"),
     })
 }
