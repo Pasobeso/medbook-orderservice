@@ -16,6 +16,7 @@ use medbook_core::{
     outbox,
 };
 use medbook_events::OrderCancelledEvent;
+use serde_json::Value;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -235,7 +236,7 @@ async fn get_my_orders(
 
 #[derive(Deserialize, ToSchema)]
 struct CreateOrderReq {
-    delivery_address_id: i32,
+    delivery_address_id: Option<i32>,
     cart_id: i32,
 }
 
@@ -261,15 +262,27 @@ async fn create_order(
         .await
         .context("Failed to obtain a DB connection pool")?;
 
-    let delivery_address = get_delivery_address_as_value_with_ownership_check(
-        state.http_client,
-        body.delivery_address_id,
-        patient_id,
-    )
-    .await
-    .map_err(|_| {
-        AppError::ForbiddenResource("Patient does not own this delivery address".into())
-    })?;
+    let delivery_address: Option<Value> = match body.delivery_address_id {
+        Some(id) => {
+            let delivery_address = get_delivery_address_as_value_with_ownership_check(
+                state.http_client,
+                id,
+                patient_id,
+            )
+            .await;
+
+            match delivery_address {
+                Ok(delivery_address) => Some(delivery_address),
+                Err(_) => None,
+            }
+        }
+        None => None,
+    };
+
+    let order_type: String = match delivery_address {
+        Some(_) => "DELIVERY".into(),
+        None => "PICKUP".into(),
+    };
 
     let order = conn
         .transaction(move |conn| {
@@ -280,6 +293,7 @@ async fn create_order(
                         delivery_address,
                         cart_id: body.cart_id,
                         status: "PENDING".into(),
+                        order_type,
                     })
                     .returning(OrderEntity::as_returning())
                     .get_result(conn)

@@ -69,9 +69,10 @@ pub struct OrderEntity {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CreateOrderEntity {
     pub patient_id: i32,
-    pub delivery_address: Value,
+    pub delivery_address: Option<Value>,
     pub cart_id: i32,
     pub status: String,
+    pub order_type: String,
 }
 
 #[derive(Queryable, Serialize, Selectable, Debug, Clone, ToSchema)]
